@@ -4,10 +4,8 @@ PREBUMP=
 
 PREVERSION=
   philea -s "666 go vet %s" "666 go-fmt-fail %s"
-  666 go run gump.go -v
-  666 go test
-  666 go test config/*
-  666 go test stringexec/*
+  666 go run main.go -v
+  666 go generate github.com/mh-cbon/httper/demo
   666 changelog finalize --version !newversion!
   666 commit -q -m "changelog: !newversion!" -f change.log
   666 changelog md -o CHANGELOG.md --guess
