@@ -50,7 +50,7 @@ Usage
 ## Cli examples
 
 ```sh
-# Create a channeled version of Tomate to MyTomate
+# Create a httped version of Tomate to MyTomate
 httper http_vegetables_gen.go *JSONTomates:HTTPTomates
 ```
 
