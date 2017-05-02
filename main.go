@@ -134,29 +134,6 @@ func New%v(embed %v) *%v {
 	for _, m := range foundMethods[srcConcrete] {
 
 		methodName := astutil.MethodName(m)
-		// params := astutil.MethodParams(m)
-		// paramNames := astutil.MethodParamNames(m)
-		// retVars := astutil.MethodReturnVars(m)
-		// sRetVars := strings.Join(retVars, ", ")
-		// hasErr := astutil.MethodReturnError(m)
-		// structProps := astutil.MethodParamsToProps(m)
-		// receiverName := astutil.ReceiverName(m)
-
-		// if params != "" {
-		// 	inputParams := "input." + strings.Join(strings.Split(paramNames, ","), ", input.")
-		// 	if astutil.MethodHasEllipse(m) {
-		// 		temp := strings.Split(paramNames, ",")
-		// 		inputParams = ""
-		// 		for i, t := range temp {
-		// 			if i == len(temp)-1 {
-		// 				inputParams += "input." + t + "..., "
-		// 			} else {
-		// 				inputParams += "input." + t + ", "
-		// 			}
-		// 		}
-		// 		inputParams = inputParams[:len(inputParams)-2]
-		// 	}
-		// }
 
 		fmt.Fprintf(dest, `// %v invoke %v.%v using the request body as a json payload.
 func (t %v) %v(w http.ResponseWriter, r *http.Request) {
