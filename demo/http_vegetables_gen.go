@@ -27,27 +27,39 @@ func NewHTTPController(embed *JSONController) *HTTPController {
 	return ret
 }
 
+// HandleError prints http 500 and prints the error.
+func (t HTTPController) HandleError(err error, w http.ResponseWriter, r *http.Request) bool {
+	if err == nil {
+		return false
+	}
+	w.WriteHeader(http.StatusInternalServerError)
+	io.WriteString(w, err.Error())
+	return true
+}
+
+// HandleSuccess prints http 500 and prints the error.
+func (t HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
+	w.WriteHeader(http.StatusOK)
+	_, err := io.Copy(w, r)
+	return err
+}
+
 // GetByID invoke *JSONController.GetByID using the request body as a json payload.
 func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	var urlID int
-	urlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	tempurlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
+	urlID = tempurlID
+	if t.HandleError(err, w, r) {
 		return
 	}
+
 	res, err := t.embed.GetByID(urlID)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
 
 }
 
@@ -55,24 +67,19 @@ func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 
 	var urlID int
-	urlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	tempurlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
+	urlID = tempurlID
+	if t.HandleError(err, w, r) {
 		return
 	}
 	reqBody := r.Body
-	res, err := t.embed.UpdateByID(urlID, reqBody)
 
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	res, err := t.embed.UpdateByID(urlID, reqBody)
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
 
 }
 
@@ -80,31 +87,33 @@ func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
 
 	var reqID int
-	reqID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
-		return
-	}
-	if reqID == "" {
-		err = r.ParseForm()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-			io.WriteString(w, err.Error())                // todo: not static.
+	reqValues := r.URL.Query()
+	if _, ok := reqValues["ID"]; ok {
+		tempreqID, err := strconv.Atoi(r.URL.Query().Get("ID"))
+		reqID = tempreqID
+		if t.HandleError(err, w, r) {
 			return
 		}
-		reqID = r.FormValue("ID")
-	}
-	res, err := t.embed.DeleteByID(reqID)
 
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	} else {
+		parseFormErr := r.ParseForm()
+		if t.HandleError(parseFormErr, w, r) {
+			return
+		}
+
+		tempreqID, err := strconv.Atoi(r.FormValue("ID"))
+		reqID = tempreqID
+		if t.HandleError(err, w, r) {
+			return
+		}
+
+	}
+
+	res, err := t.embed.DeleteByID(reqID)
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
 
 }

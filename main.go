@@ -121,6 +121,7 @@ func processType(destName, srcName string, foundMethods map[string][]*ast.FuncDe
 	var b bytes.Buffer
 	dest := &b
 
+	// Declare the new type
 	fmt.Fprintf(dest, `
 // %v is an httper of %v.
 type %v struct{
@@ -129,7 +130,10 @@ type %v struct{
 		`, destName, srcName, destName, srcName)
 
 	srcConcrete := astutil.GetUnpointedType(srcName)
+	_, hasHandleError := foundMethods["HandleError"]
+	_, hasHandleSuccess := foundMethods["HandleSuccess"]
 
+	// Make the constructor
 	fmt.Fprintf(dest, `// New%v constructs an httper of %v
 func New%v(embed %v) *%v {
 	ret := &%v{
@@ -139,6 +143,53 @@ func New%v(embed %v) *%v {
 }
 `,
 		destName, srcName, destName, srcName, destName, destName)
+
+	// Add an error handler method
+	if hasHandleError {
+		fmt.Fprintf(dest, `// HandleError calls for embed.HandleError method.
+func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
+	if err == nil {
+		return false
+	}
+		return x.embed.HandleError(err, w, r)
+}
+`,
+			destName)
+
+	} else {
+		fmt.Fprintf(dest, `// HandleError prints http 500 and prints the error.
+func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
+	if err == nil {
+		return false
+	}
+	w.WriteHeader(http.StatusInternalServerError)
+	io.WriteString(w, err.Error())
+	return true
+}
+`,
+			destName)
+	}
+
+	// Add a success handler method
+	if hasHandleSuccess {
+		fmt.Fprintf(dest, `// HandleSuccess calls for embed.HandleSuccess method.
+func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
+	return x.embed.HandleSuccess(w, r)
+}
+`,
+			destName)
+
+	} else {
+		fmt.Fprintf(dest, `// HandleSuccess prints http 500 and prints the error.
+func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
+	w.WriteHeader(http.StatusOK)
+	_, err := io.Copy(w, r)
+	return err
+}
+`,
+			destName)
+	}
+
 	fmt.Fprintln(dest)
 
 	for _, m := range foundMethods[srcConcrete] {
@@ -150,6 +201,12 @@ func New%v(embed %v) *%v {
 		dstStar := astutil.GetPointedType(destName)
 
 		if astutil.IsExported(methodName) == false {
+			break
+		}
+		if methodName == "HandleError" {
+			break
+		}
+		if methodName == "HandleSuccess" {
 			break
 		}
 
@@ -184,15 +241,19 @@ func New%v(embed %v) *%v {
 
 							} else if prefix == "req" {
 								expr := fmt.Sprintf("r.URL.Query().Get(%q)", name)
-								methodInvokation += convertedStr(p, expr, lParamTypes[i])
-								f := fmt.Sprintf("err = r.ParseForm()\n")
-								f += handleErr("err")
-								f += fmt.Sprintf("%v = r.FormValue(%q)", p, name)
-								methodInvokation += fmt.Sprintf(`if %v == "" {
-%v
+								f := fmt.Sprintf(`reqValues := r.URL.Query()
+if _, ok := reqValues[%q]; ok {
+		%v
+}`, name, convertedStr(p, expr, lParamTypes[i]))
+
+								expr = fmt.Sprintf("r.FormValue(%q)", name)
+								f += fmt.Sprintf(`else {
+	parseFormErr := r.ParseForm()
+	%v
+	%v
 }
-`,
-									p, f)
+`, handleErr("parseFormErr"), convertedStr(p, expr, lParamTypes[i]))
+								methodInvokation += f
 							}
 							found = true
 							break
@@ -203,15 +264,13 @@ func New%v(embed %v) *%v {
 					}
 				}
 			}
-			methodInvokation += fmt.Sprintf("res, err := t.embed.%v(%v)\n", methodName, paramNames)
+			methodInvokation += fmt.Sprintf(`
+res, err := t.embed.%v(%v)`, methodName, paramNames)
 		}
 
 		errHandle := handleErr("err")
 
-		outHandle := fmt.Sprintf(`w.WriteHeader(http.StatusOK)
-w.Header().Set("Content-Type", "application/json") // todo: not static.
-io.Copy(w, res)
-`)
+		outHandle := fmt.Sprintf(`t.HandleSuccess(w, res)`)
 
 		body := fmt.Sprintf(`
 		  %v
@@ -239,17 +298,16 @@ func convertedStr(toVarName, expr string, toType string) string {
 	return expr
 }
 func convStrToInt(fromVarName, toVarName string) string {
-	methodInvokation := fmt.Sprintf("%v, err := strconv.Atoi(%v)\n", toVarName, fromVarName)
+	methodInvokation := fmt.Sprintf("temp%v, err := strconv.Atoi(%v)\n", toVarName, fromVarName)
 	methodInvokation += handleErr("err")
+	methodInvokation += fmt.Sprintf("%v = temp%v\n", toVarName, toVarName)
 	return methodInvokation
 }
 func handleErr(errVarName string) string {
-	methodInvokation := fmt.Sprintf(`if %v != nil {
-w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-io.WriteString(w, %v.Error()) // todo: not static.
+	methodInvokation := fmt.Sprintf(`if t.HandleError(%v,w,r) {
 return
 }
-`, errVarName, errVarName)
+`, errVarName)
 	return methodInvokation
 }
 func paramsHas(params string, what string) bool {
