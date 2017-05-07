@@ -1,6 +1,6 @@
 # httper
 
-[![travis Status](https://travis-ci.org//mh-cbon/httper.svg?branch=master)](https://travis-ci.org//mh-cbon/httper) [![Appveyor Status](https://ci.appveyor.com/api/projects/status//github/mh-cbon/httper?branch=master&svg=true)](https://ci.appveyor.com/projects//mh-cbon/httper) [![Go Report Card](https://goreportcard.com/badge/github.com/mh-cbon/httper)](https://goreportcard.com/report/github.com/mh-cbon/httper) [![GoDoc](https://godoc.org/github.com/mh-cbon/httper?status.svg)](http://godoc.org/github.com/mh-cbon/httper) [![MIT License](http://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![travis Status](https://travis-ci.org/mh-cbon/httper.svg?branch=master)](https://travis-ci.org/mh-cbon/httper) [![Appveyor Status](https://ci.appveyor.com/api/projects/status/github/mh-cbon/httper?branch=master&svg=true)](https://ci.appveyor.com/projects/mh-cbon/httper) [![Go Report Card](https://goreportcard.com/badge/github.com/mh-cbon/httper)](https://goreportcard.com/report/github.com/mh-cbon/httper) [![GoDoc](https://godoc.org/github.com/mh-cbon/httper?status.svg)](http://godoc.org/github.com/mh-cbon/httper) [![MIT License](http://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Package httper is a cli tool to implement http interface of a type.
 
@@ -65,6 +65,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	httper "github.com/mh-cbon/httper/lib"
 )
 
 //go:generate lister vegetables_gen.go *Tomate:Tomates
@@ -121,18 +123,33 @@ func (t *Controller) GetByID(urlID int) *Tomate {
 
 // UpdateByID ...
 func (t *Controller) UpdateByID(urlID int, reqBody *Tomate) *Tomate {
+	var ret *Tomate
 	t.backend.Filter(func(v *Tomate) bool {
 		if v.ID == urlID {
 			v.Name = reqBody.Name
+			ret = v
 		}
 		return true
 	})
-	return reqBody
+	return ret
 }
 
 // DeleteByID ...
-func (t *Controller) DeleteByID(reqID int) bool {
-	return t.backend.Remove(&Tomate{ID: reqID})
+func (t *Controller) DeleteByID(REQid int) bool {
+	return t.backend.Remove(&Tomate{ID: REQid})
+}
+
+// TestVars1 ...
+func (t *Controller) TestVars1(w http.ResponseWriter, r *http.Request) {
+}
+
+// TestCookier ...
+func (t *Controller) TestCookier(c httper.Cookier) {
+}
+
+// TestRPCer ...
+func (t *Controller) TestRPCer(id int) bool {
+	return false
 }
 ```
 
@@ -147,6 +164,7 @@ package main
 // do not edit
 
 import (
+	httper "github.com/mh-cbon/httper/lib"
 	"io"
 	"net/http"
 	"strconv"
@@ -158,96 +176,125 @@ var xxHTTPOk = http.StatusOK
 
 // HTTPController is an httper of *JSONController.
 type HTTPController struct {
-	embed *JSONController
+	embed   *JSONController
+	cookier httper.CookieProvider
+	dataer  httper.Dataer
 }
 
 // NewHTTPController constructs an httper of *JSONController
 func NewHTTPController(embed *JSONController) *HTTPController {
 	ret := &HTTPController{
-		embed: embed,
+		embed:   embed,
+		cookier: &httper.CookieHelperProvider{},
 	}
 	return ret
 }
 
+// HandleError returns http 500 and prints the error.
+func (t *HTTPController) HandleError(err error, w http.ResponseWriter, r *http.Request) bool {
+	if err == nil {
+		return false
+	}
+	w.WriteHeader(http.StatusInternalServerError)
+	io.WriteString(w, err.Error())
+	return true
+}
+
+// HandleSuccess calls for embed.HandleSuccess method.
+func (t *HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
+	return t.embed.HandleSuccess(w, r)
+}
+
 // GetByID invoke *JSONController.GetByID using the request body as a json payload.
 func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
-
 	var urlID int
-	urlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
+	if t.HandleError(err, w, r) {
 		return
 	}
+	urlID = tempurlID
+
 	res, err := t.embed.GetByID(urlID)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
 
 }
 
 // UpdateByID invoke *JSONController.UpdateByID using the request body as a json payload.
 func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
-
 	var urlID int
-	urlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
+	if t.HandleError(err, w, r) {
 		return
 	}
+	urlID = tempurlID
 	reqBody := r.Body
-	res, err := t.embed.UpdateByID(urlID, reqBody)
 
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	res, err := t.embed.UpdateByID(urlID, reqBody)
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
 
 }
 
 // DeleteByID invoke *JSONController.DeleteByID using the request body as a json payload.
 func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
-
-	var reqID int
-	reqID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	var REQid int
+	tempREQid, err := strconv.Atoi(t.dataer.Get("req", "id"))
+	if t.HandleError(err, w, r) {
 		return
 	}
-	if reqID == "" {
-		err = r.ParseForm()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-			io.WriteString(w, err.Error())                // todo: not static.
-			return
-		}
-		reqID = r.FormValue("ID")
-	}
-	res, err := t.embed.DeleteByID(reqID)
+	REQid = tempREQid
 
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // todo: not static.
-		io.WriteString(w, err.Error())                // todo: not static.
+	res, err := t.embed.DeleteByID(REQid)
+	if t.HandleError(err, w, r) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json") // todo: not static.
-	io.Copy(w, res)
+	t.HandleSuccess(w, res)
+
+}
+
+// TestVars1 invoke *JSONController.TestVars1 using the request body as a json payload.
+func (t *HTTPController) TestVars1(w http.ResponseWriter, r *http.Request) {
+
+	res, err := t.embed.TestVars1(w, r)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
+
+}
+
+// TestCookier invoke *JSONController.TestCookier using the request body as a json payload.
+func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
+	var c httper.Cookier
+	c = t.cookier.Make(w, r)
+
+	res, err := t.embed.TestCookier(c)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
+
+}
+
+// TestRPCer invoke *JSONController.TestRPCer using the request body as a json payload.
+func (t *HTTPController) TestRPCer(w http.ResponseWriter, r *http.Request) {
+
+	res, err := t.embed.TestRPCer(r)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
 
 }
 ```

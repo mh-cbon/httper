@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	httper "github.com/mh-cbon/httper/lib"
 )
 
 //go:generate lister vegetables_gen.go *Tomate:Tomates
@@ -59,16 +61,31 @@ func (t *Controller) GetByID(urlID int) *Tomate {
 
 // UpdateByID ...
 func (t *Controller) UpdateByID(urlID int, reqBody *Tomate) *Tomate {
+	var ret *Tomate
 	t.backend.Filter(func(v *Tomate) bool {
 		if v.ID == urlID {
 			v.Name = reqBody.Name
+			ret = v
 		}
 		return true
 	})
-	return reqBody
+	return ret
 }
 
 // DeleteByID ...
-func (t *Controller) DeleteByID(reqID int) bool {
-	return t.backend.Remove(&Tomate{ID: reqID})
+func (t *Controller) DeleteByID(REQid int) bool {
+	return t.backend.Remove(&Tomate{ID: REQid})
+}
+
+// TestVars1 ...
+func (t *Controller) TestVars1(w http.ResponseWriter, r *http.Request) {
+}
+
+// TestCookier ...
+func (t *Controller) TestCookier(c httper.Cookier) {
+}
+
+// TestRPCer ...
+func (t *Controller) TestRPCer(id int) bool {
+	return false
 }

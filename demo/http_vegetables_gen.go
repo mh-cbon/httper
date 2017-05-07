@@ -5,6 +5,7 @@ package main
 // do not edit
 
 import (
+	httper "github.com/mh-cbon/httper/lib"
 	"io"
 	"net/http"
 	"strconv"
@@ -16,19 +17,22 @@ var xxHTTPOk = http.StatusOK
 
 // HTTPController is an httper of *JSONController.
 type HTTPController struct {
-	embed *JSONController
+	embed   *JSONController
+	cookier httper.CookieProvider
+	dataer  httper.Dataer
 }
 
 // NewHTTPController constructs an httper of *JSONController
 func NewHTTPController(embed *JSONController) *HTTPController {
 	ret := &HTTPController{
-		embed: embed,
+		embed:   embed,
+		cookier: &httper.CookieHelperProvider{},
 	}
 	return ret
 }
 
-// HandleError prints http 500 and prints the error.
-func (t HTTPController) HandleError(err error, w http.ResponseWriter, r *http.Request) bool {
+// HandleError returns http 500 and prints the error.
+func (t *HTTPController) HandleError(err error, w http.ResponseWriter, r *http.Request) bool {
 	if err == nil {
 		return false
 	}
@@ -37,22 +41,19 @@ func (t HTTPController) HandleError(err error, w http.ResponseWriter, r *http.Re
 	return true
 }
 
-// HandleSuccess prints http 500 and prints the error.
-func (t HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
-	w.WriteHeader(http.StatusOK)
-	_, err := io.Copy(w, r)
-	return err
+// HandleSuccess calls for embed.HandleSuccess method.
+func (t *HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
+	return t.embed.HandleSuccess(w, r)
 }
 
 // GetByID invoke *JSONController.GetByID using the request body as a json payload.
 func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
-
 	var urlID int
-	tempurlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	urlID = tempurlID
+	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
 	if t.HandleError(err, w, r) {
 		return
 	}
+	urlID = tempurlID
 
 	res, err := t.embed.GetByID(urlID)
 	if t.HandleError(err, w, r) {
@@ -65,13 +66,12 @@ func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 
 // UpdateByID invoke *JSONController.UpdateByID using the request body as a json payload.
 func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
-
 	var urlID int
-	tempurlID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-	urlID = tempurlID
+	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
 	if t.HandleError(err, w, r) {
 		return
 	}
+	urlID = tempurlID
 	reqBody := r.Body
 
 	res, err := t.embed.UpdateByID(urlID, reqBody)
@@ -85,31 +85,52 @@ func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 
 // DeleteByID invoke *JSONController.DeleteByID using the request body as a json payload.
 func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
+	var REQid int
+	tempREQid, err := strconv.Atoi(t.dataer.Get("req", "id"))
+	if t.HandleError(err, w, r) {
+		return
+	}
+	REQid = tempREQid
 
-	var reqID int
-	reqValues := r.URL.Query()
-	if _, ok := reqValues["ID"]; ok {
-		tempreqID, err := strconv.Atoi(r.URL.Query().Get("ID"))
-		reqID = tempreqID
-		if t.HandleError(err, w, r) {
-			return
-		}
-
-	} else {
-		parseFormErr := r.ParseForm()
-		if t.HandleError(parseFormErr, w, r) {
-			return
-		}
-
-		tempreqID, err := strconv.Atoi(r.FormValue("ID"))
-		reqID = tempreqID
-		if t.HandleError(err, w, r) {
-			return
-		}
-
+	res, err := t.embed.DeleteByID(REQid)
+	if t.HandleError(err, w, r) {
+		return
 	}
 
-	res, err := t.embed.DeleteByID(reqID)
+	t.HandleSuccess(w, res)
+
+}
+
+// TestVars1 invoke *JSONController.TestVars1 using the request body as a json payload.
+func (t *HTTPController) TestVars1(w http.ResponseWriter, r *http.Request) {
+
+	res, err := t.embed.TestVars1(w, r)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
+
+}
+
+// TestCookier invoke *JSONController.TestCookier using the request body as a json payload.
+func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
+	var c httper.Cookier
+	c = t.cookier.Make(w, r)
+
+	res, err := t.embed.TestCookier(c)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
+
+}
+
+// TestRPCer invoke *JSONController.TestRPCer using the request body as a json payload.
+func (t *HTTPController) TestRPCer(w http.ResponseWriter, r *http.Request) {
+
+	res, err := t.embed.TestRPCer(r)
 	if t.HandleError(err, w, r) {
 		return
 	}

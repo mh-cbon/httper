@@ -81,6 +81,7 @@ func main() {
 	fmt.Fprintf(dest, "	%q\n", "io")
 	fmt.Fprintf(dest, "	%q\n", "net/http")
 	fmt.Fprintf(dest, "	%q\n", "strconv")
+	fmt.Fprintf(dest, "	%v %q\n", "httper", "github.com/mh-cbon/httper/lib")
 	fmt.Fprintf(dest, ")\n")
 	fmt.Fprintf(dest, "\n\n")
 	// cheat.
@@ -126,18 +127,22 @@ func processType(destName, srcName string, foundMethods map[string][]*ast.FuncDe
 // %v is an httper of %v.
 type %v struct{
 	embed %v
+	cookier httper.CookieProvider
+	dataer httper.Dataer
 }
 		`, destName, srcName, destName, srcName)
 
+	dstStar := astutil.GetPointedType(destName)
 	srcConcrete := astutil.GetUnpointedType(srcName)
-	_, hasHandleError := foundMethods["HandleError"]
-	_, hasHandleSuccess := foundMethods["HandleSuccess"]
+	hasHandleError := methodsContains(srcConcrete, "HandleError", foundMethods)
+	hasHandleSuccess := methodsContains(srcConcrete, "HandleSuccess", foundMethods)
 
 	// Make the constructor
 	fmt.Fprintf(dest, `// New%v constructs an httper of %v
 func New%v(embed %v) *%v {
 	ret := &%v{
 		embed: embed,
+		cookier: &httper.CookieHelperProvider{},
 	}
   return ret
 }
@@ -151,13 +156,13 @@ func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 	if err == nil {
 		return false
 	}
-		return x.embed.HandleError(err, w, r)
+		return t.embed.HandleError(err, w, r)
 }
 `,
-			destName)
+			dstStar)
 
 	} else {
-		fmt.Fprintf(dest, `// HandleError prints http 500 and prints the error.
+		fmt.Fprintf(dest, `// HandleError returns http 500 and prints the error.
 func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 	if err == nil {
 		return false
@@ -167,126 +172,149 @@ func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 	return true
 }
 `,
-			destName)
+			dstStar)
 	}
 
 	// Add a success handler method
 	if hasHandleSuccess {
 		fmt.Fprintf(dest, `// HandleSuccess calls for embed.HandleSuccess method.
 func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
-	return x.embed.HandleSuccess(w, r)
+	return t.embed.HandleSuccess(w, r)
 }
 `,
-			destName)
+			dstStar)
 
 	} else {
-		fmt.Fprintf(dest, `// HandleSuccess prints http 500 and prints the error.
+		fmt.Fprintf(dest, `// HandleSuccess prints http 200 and prints r.
 func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 	w.WriteHeader(http.StatusOK)
 	_, err := io.Copy(w, r)
 	return err
 }
 `,
-			destName)
+			dstStar)
 	}
-
 	fmt.Fprintln(dest)
 
 	for _, m := range foundMethods[srcConcrete] {
-
 		methodName := astutil.MethodName(m)
-		params := astutil.MethodParams(m)
+		// params := astutil.MethodParams(m)
 		paramNames := astutil.MethodParamNames(m)
 		paramTypes := astutil.MethodParamTypes(m)
-		dstStar := astutil.GetPointedType(destName)
 
+		// ensure it is desired to facade this method.
 		if astutil.IsExported(methodName) == false {
-			break
+			continue
 		}
 		if methodName == "HandleError" {
-			break
+			continue
 		}
 		if methodName == "HandleSuccess" {
-			break
+			continue
 		}
 
 		methodInvokation := ""
-		if paramsLen(params) == 1 && paramType(params) == "io.Reader" { // todo: can do better.
-			methodInvokation = fmt.Sprintf("res, err := t.embed.%v(r.Body)\n", methodName)
 
-		} else {
-			lParamNames := strings.Split(paramNames, ",")
-			lParamTypes := strings.Split(paramTypes, ",")
-			for i, p := range lParamNames {
-				p = strings.TrimSpace(p)
-				if p == "reqBody" {
-					methodInvokation += fmt.Sprintf("reqBody :=	r.Body\n")
-				} else {
-					found := false
-					prefixes := []string{"url", "get", "req", "post", "cookie", "route"} // note: route prefix is not handled with this muxer.
-					for _, prefix := range prefixes {
-						if strings.HasPrefix(p, prefix) {
-							methodInvokation += fmt.Sprintf("var %v %v\n", p, lParamTypes[i])
-							name := p[len(prefix):]
+		lParamNames := strings.Split(paramNames, ",")
+		lParamTypes := strings.Split(paramTypes, ",")
+		for i, p := range lParamNames {
+			p = strings.TrimSpace(p)
+			paramType := strings.TrimSpace(lParamTypes[i])
 
-							if prefix == "get" || prefix == "url" { // in this muxer they are the same
-								expr := fmt.Sprintf("r.URL.Query().Get(%q)", name)
-								methodInvokation += convertedStr(p, expr, lParamTypes[i])
+			if p == reqBodyVarName {
+				methodInvokation += fmt.Sprintf("reqBody :=	r.Body\n")
 
-							} else if prefix == "post" {
-								methodInvokation += fmt.Sprintf("err = r.ParseForm()\n")
-								methodInvokation += handleErr("err")
-								expr := fmt.Sprintf("r.FormValue(%q)", name)
-								methodInvokation += convertedStr(p, expr, lParamTypes[i])
+			} else if isConvetionnedParam(p) {
 
-							} else if prefix == "req" {
-								expr := fmt.Sprintf("r.URL.Query().Get(%q)", name)
-								f := fmt.Sprintf(`reqValues := r.URL.Query()
-if _, ok := reqValues[%q]; ok {
-		%v
-}`, name, convertedStr(p, expr, lParamTypes[i]))
+				prefix := getParamConvention(p)
+				name := strings.ToLower(p[len(prefix):])
 
-								expr = fmt.Sprintf("r.FormValue(%q)", name)
-								f += fmt.Sprintf(`else {
-	parseFormErr := r.ParseForm()
-	%v
-	%v
-}
-`, handleErr("parseFormErr"), convertedStr(p, expr, lParamTypes[i]))
-								methodInvokation += f
-							}
-							found = true
-							break
-						}
-					}
-					if !found {
-						methodInvokation += fmt.Sprintf("var %v %v\n", p, lParamTypes[i])
-					}
+				methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
+
+				//handle prefixed data
+				expr := fmt.Sprintf("t.dataer.Get(%q, %q)", prefix, name)
+				methodInvokation += convertedStr(p, expr, paramType)
+
+			} else {
+				proceed := !(paramType == "http.ResponseWriter" && p == "w") &&
+					!(paramType == "*http.Request" && p == "r")
+				if proceed {
+					methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
+				}
+				if paramType == "httper.Cookier" {
+					methodInvokation += fmt.Sprintf("%v = t.cookier.Make(w, r)\n", p)
 				}
 			}
-			methodInvokation += fmt.Sprintf(`
-res, err := t.embed.%v(%v)`, methodName, paramNames)
 		}
 
-		errHandle := handleErr("err")
-
-		outHandle := fmt.Sprintf(`t.HandleSuccess(w, res)`)
-
+		// proceed to the method invokcation on embed
 		body := fmt.Sprintf(`
+		  res, err := t.embed.%v(%v)
 		  %v
-		  %v
-		  %v
-`, methodInvokation, errHandle, outHandle)
+		  t.HandleSuccess(w, res)
+`, methodName, paramNames, handleErr("err"))
 
 		fmt.Fprintf(dest, `// %v invoke %v.%v using the request body as a json payload.
 func (t %v) %v(w http.ResponseWriter, r *http.Request) {
   %v
+  %v
 }`,
-			methodName, srcName, methodName, dstStar, methodName, body)
+			methodName, srcName, methodName, dstStar, methodName, methodInvokation, body)
 		fmt.Fprintln(dest)
 	}
 
 	return b
+}
+
+var reqBodyVarName = "reqBody"
+
+var prefixes = []string{"url", "get", "req", "post", "cookie", "route"}
+
+func isConvetionnedParam(varName string) bool {
+	if varName == reqBodyVarName {
+		return true
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(varName, strings.ToLower(prefix)) {
+			f := string(varName[len(prefix):][0])
+			return f == strings.ToUpper(f)
+		} else if strings.HasPrefix(varName, strings.ToUpper(prefix)) {
+			f := string(varName[len(prefix):][0])
+			return f == strings.ToLower(f)
+		}
+	}
+	return false
+}
+
+func getParamConvention(varName string) string {
+	if varName == reqBodyVarName {
+		return reqBodyVarName
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(varName, strings.ToLower(prefix)) {
+			f := string(varName[len(prefix):][0])
+			if f == strings.ToUpper(f) {
+				return prefix
+			}
+		} else if strings.HasPrefix(varName, strings.ToUpper(prefix)) {
+			f := string(varName[len(prefix):][0])
+			if f == strings.ToLower(f) {
+				return prefix
+			}
+		}
+	}
+	return ""
+}
+
+func methodsContains(typeName, search string, methods map[string][]*ast.FuncDecl) bool {
+	if funList, ok := methods[typeName]; ok {
+		for _, fun := range funList {
+			if astutil.MethodName(fun) == search {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func convertedStr(toVarName, expr string, toType string) string {
