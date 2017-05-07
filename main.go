@@ -149,6 +149,10 @@ func New%v(embed %v) *%v {
 		paramTypes := astutil.MethodParamTypes(m)
 		dstStar := astutil.GetPointedType(destName)
 
+		if astutil.IsExported(methodName) == false {
+			break
+		}
+
 		methodInvokation := ""
 		if paramsLen(params) == 1 && paramType(params) == "io.Reader" { // todo: can do better.
 			methodInvokation = fmt.Sprintf("res, err := t.embed.%v(r.Body)\n", methodName)
