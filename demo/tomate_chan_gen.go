@@ -46,7 +46,7 @@ func (t *ChanTomates) Push(x ...*Tomate) *Tomates {
 		retVar0 = t.embed.Push(x...)
 	}
 	return retVar0
-} // Push appends every *Tomate
+}
 
 // Unshift is channeled
 func (t *ChanTomates) Unshift(x ...*Tomate) *Tomates {
@@ -55,7 +55,7 @@ func (t *ChanTomates) Unshift(x ...*Tomate) *Tomates {
 		retVar1 = t.embed.Unshift(x...)
 	}
 	return retVar1
-} // Unshift prepends every *Tomate
+}
 
 // Pop is channeled
 func (t *ChanTomates) Pop() *Tomate {
@@ -64,7 +64,7 @@ func (t *ChanTomates) Pop() *Tomate {
 		retVar2 = t.embed.Pop()
 	}
 	return retVar2
-} // Pop removes then returns the last *Tomate.
+}
 
 // Shift is channeled
 func (t *ChanTomates) Shift() *Tomate {
@@ -73,7 +73,7 @@ func (t *ChanTomates) Shift() *Tomate {
 		retVar3 = t.embed.Shift()
 	}
 	return retVar3
-} // Shift removes then returns the first *Tomate.
+}
 
 // Index is channeled
 func (t *ChanTomates) Index(s *Tomate) int {
@@ -82,7 +82,7 @@ func (t *ChanTomates) Index(s *Tomate) int {
 		retVar4 = t.embed.Index(s)
 	}
 	return retVar4
-} // Index of given *Tomate. It must implements Ider interface.
+}
 
 // Contains is channeled
 func (t *ChanTomates) Contains(s *Tomate) bool {
@@ -91,7 +91,7 @@ func (t *ChanTomates) Contains(s *Tomate) bool {
 		retVar5 = t.embed.Contains(s)
 	}
 	return retVar5
-} // Contains returns true if s in is t.
+}
 
 // RemoveAt is channeled
 func (t *ChanTomates) RemoveAt(i int) bool {
@@ -100,7 +100,7 @@ func (t *ChanTomates) RemoveAt(i int) bool {
 		retVar6 = t.embed.RemoveAt(i)
 	}
 	return retVar6
-} // RemoveAt removes a *Tomate at index i.
+}
 
 // Remove is channeled
 func (t *ChanTomates) Remove(s *Tomate) bool {
@@ -109,7 +109,7 @@ func (t *ChanTomates) Remove(s *Tomate) bool {
 		retVar7 = t.embed.Remove(s)
 	}
 	return retVar7
-} // Remove removes given *Tomate
+}
 
 // InsertAt is channeled
 func (t *ChanTomates) InsertAt(i int, s *Tomate) *Tomates {
@@ -118,12 +118,10 @@ func (t *ChanTomates) InsertAt(i int, s *Tomate) *Tomates {
 		retVar8 = t.embed.InsertAt(i, s)
 	}
 	return retVar8
-} // InsertAt adds given *Tomate at index i
+}
 
 // Splice is channeled
-func (t *ChanTomates) Splice(start int, length int, s ...*Tomate) []*// Splice removes and returns a slice of *Tomate, starting at start, ending at start+length.
-// If any s is provided, they are inserted in place of the removed slice.
-Tomate {
+func (t *ChanTomates) Splice(start int, length int, s ...*Tomate) []*Tomate {
 	var retVar9 []*Tomate
 	t.ops <- func() {
 		retVar9 = t.embed.Splice(start, length, s...)
@@ -132,8 +130,7 @@ Tomate {
 }
 
 // Slice is channeled
-func (t *ChanTomates) Slice(start int, length int) []*// Slice returns a copied slice of *Tomate, starting at start, ending at start+length.
-Tomate {
+func (t *ChanTomates) Slice(start int, length int) []*Tomate {
 	var retVar10 []*Tomate
 	t.ops <- func() {
 		retVar10 = t.embed.Slice(start, length)
@@ -148,7 +145,7 @@ func (t *ChanTomates) Reverse() *Tomates {
 		retVar11 = t.embed.Reverse()
 	}
 	return retVar11
-} // Reverse the slice.
+}
 
 // Len is channeled
 func (t *ChanTomates) Len() int {
@@ -157,11 +154,10 @@ func (t *ChanTomates) Len() int {
 		retVar12 = t.embed.Len()
 	}
 	return retVar12
-} // Len of the slice.
+}
 
 // Set is channeled
-func (t *ChanTomates) Set(x []*// Set the slice.
-Tomate) *Tomates {
+func (t *ChanTomates) Set(x []*Tomate) *Tomates {
 	var retVar13 *Tomates
 	t.ops <- func() {
 		retVar13 = t.embed.Set(x)
@@ -170,8 +166,7 @@ Tomate) *Tomates {
 }
 
 // Get is channeled
-func (t *ChanTomates) Get() []*// Get the slice.
-Tomate {
+func (t *ChanTomates) Get() []*Tomate {
 	var retVar14 []*Tomate
 	t.ops <- func() {
 		retVar14 = t.embed.Get()
@@ -186,7 +181,7 @@ func (t *ChanTomates) At(i int) *Tomate {
 		retVar15 = t.embed.At(i)
 	}
 	return retVar15
-} // At return the item at index i.
+}
 
 // Filter is channeled
 func (t *ChanTomates) Filter(filters ...func(*Tomate) bool) *Tomates {
@@ -195,7 +190,7 @@ func (t *ChanTomates) Filter(filters ...func(*Tomate) bool) *Tomates {
 		retVar16 = t.embed.Filter(filters...)
 	}
 	return retVar16
-} // Filter return a new Tomates with all items satisfying f.
+}
 
 // Map is channeled
 func (t *ChanTomates) Map(mappers ...func(*Tomate) *Tomate) *Tomates {
@@ -204,7 +199,7 @@ func (t *ChanTomates) Map(mappers ...func(*Tomate) *Tomate) *Tomates {
 		retVar17 = t.embed.Map(mappers...)
 	}
 	return retVar17
-} // Map return a new Tomates of each items modified by f.
+}
 
 // First is channeled
 func (t *ChanTomates) First() *Tomate {
@@ -213,7 +208,7 @@ func (t *ChanTomates) First() *Tomate {
 		retVar18 = t.embed.First()
 	}
 	return retVar18
-} // First returns the first value or default.
+}
 
 // Last is channeled
 func (t *ChanTomates) Last() *Tomate {
@@ -222,7 +217,7 @@ func (t *ChanTomates) Last() *Tomate {
 		retVar19 = t.embed.Last()
 	}
 	return retVar19
-} // Last returns the last value or default.
+}
 
 // Empty is channeled
 func (t *ChanTomates) Empty() bool {
@@ -231,4 +226,4 @@ func (t *ChanTomates) Empty() bool {
 		retVar20 = t.embed.Empty()
 	}
 	return retVar20
-} // Empty returns true if the slice is empty.
+}
