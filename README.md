@@ -73,7 +73,7 @@ import (
 //go:generate lister vegetables_gen.go *Tomate:Tomates
 //go:generate channeler tomate_chan_gen.go *Tomates:ChanTomates
 
-//go:generate jsoner json_controller_gen.go *Controller:JSONController
+//go:generate jsoner -mode gorilla json_controller_gen.go *Controller:JSONController
 //go:generate httper -mode gorilla http_vegetables_gen.go *JSONController:HTTPController
 
 func main() {
@@ -296,8 +296,10 @@ func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
 
 // TestSessionner invoke *JSONController.TestSessionner using the request body as a json payload.
 func (t *HTTPController) TestSessionner(w http.ResponseWriter, r *http.Request) {
+	var s httper.Sessionner
+	s = t.sessioner.Make(w, r)
 
-	res, err := t.embed.TestSessionner(r)
+	res, err := t.embed.TestSessionner(s)
 	if t.HandleError(err, w, r) {
 		return
 	}
