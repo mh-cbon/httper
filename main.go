@@ -241,8 +241,18 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 			if p == reqBodyVarName {
 				methodInvokation += fmt.Sprintf("%v :=	r.Body\n", reqBodyVarName)
 
-			} else if isConvetionnedParam(mode, p) {
+			} else if paramType == "httper.Cookier" {
+				methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
+				methodInvokation += fmt.Sprintf("%v = t.cookier.Make(w, r)\n", p)
 
+			} else if (paramType == "http.ResponseWriter" && p == "w") || paramType == "*http.Request" && p == "r" {
+				//skip
+
+			} else if paramType == "httper.Sessionner" {
+				methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
+				methodInvokation += fmt.Sprintf("%v = t.sessioner.Make(w, r)\n", p)
+
+			} else if isConvetionnedParam(mode, p) {
 				prefix := getParamConvention(mode, p)
 				name := strings.ToLower(p[len(prefix):])
 
@@ -253,16 +263,7 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 				methodInvokation += convertedStr(p, expr, paramType)
 
 			} else {
-				proceed := !(paramType == "http.ResponseWriter" && p == "w") &&
-					!(paramType == "*http.Request" && p == "r")
-				if proceed {
-					methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
-				}
-				if paramType == "httper.Cookier" {
-					methodInvokation += fmt.Sprintf("%v = t.cookier.Make(w, r)\n", p)
-				} else if paramType == "httper.Sessionner" {
-					methodInvokation += fmt.Sprintf("%v = t.sessioner.Make(w, r)\n", p)
-				}
+				methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
 			}
 		}
 
@@ -288,6 +289,33 @@ func (t %v) %v(w http.ResponseWriter, r *http.Request) {
 var gorillaMode = "gorilla"
 var stdMode = "std"
 var reqBodyVarName = "reqBody"
+
+func isUsingConvetionnedParams(mode, params string) bool {
+	lParams := strings.Split(params, ",")
+	for _, param := range lParams {
+		k := strings.Split(param, " ")
+		if len(k) > 1 {
+			varType := strings.TrimSpace(k[1])
+			if varType == "http.ResponseWriter" {
+				return true
+
+			} else if varType == "*http.Request" {
+				return true
+
+			} else if varType == "httper.Cookier" {
+				return true
+
+			} else if varType == "httper.Sessionner" {
+				return true
+			}
+		}
+		varName := strings.TrimSpace(k[0])
+		if isConvetionnedParam(mode, varName) {
+			return true
+		}
+	}
+	return false
+}
 
 func isConvetionnedParam(mode, varName string) bool {
 	if varName == reqBodyVarName {

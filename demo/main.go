@@ -10,7 +10,7 @@ import (
 //go:generate lister vegetables_gen.go *Tomate:Tomates
 //go:generate channeler tomate_chan_gen.go *Tomates:ChanTomates
 
-//go:generate jsoner json_controller_gen.go *Controller:JSONController
+//go:generate jsoner -mode gorilla json_controller_gen.go *Controller:JSONController
 //go:generate httper -mode gorilla http_vegetables_gen.go *JSONController:HTTPController
 
 func main() {

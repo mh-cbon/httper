@@ -132,8 +132,10 @@ func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
 
 // TestSessionner invoke *JSONController.TestSessionner using the request body as a json payload.
 func (t *HTTPController) TestSessionner(w http.ResponseWriter, r *http.Request) {
+	var s httper.Sessionner
+	s = t.sessioner.Make(w, r)
 
-	res, err := t.embed.TestSessionner(r)
+	res, err := t.embed.TestSessionner(s)
 	if t.HandleError(err, w, r) {
 		return
 	}
