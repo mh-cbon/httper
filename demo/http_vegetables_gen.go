@@ -5,11 +5,10 @@ package main
 // do not edit
 
 import (
+	httper "github.com/mh-cbon/httper/lib"
 	"io"
 	"net/http"
 	"strconv"
-
-	httper "github.com/mh-cbon/httper/lib"
 )
 
 var xxStrconvAtoi = strconv.Atoi
@@ -123,6 +122,18 @@ func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
 	c = t.cookier.Make(w, r)
 
 	res, err := t.embed.TestCookier(c)
+	if t.HandleError(err, w, r) {
+		return
+	}
+
+	t.HandleSuccess(w, res)
+
+}
+
+// TestSessionner invoke *JSONController.TestSessionner using the request body as a json payload.
+func (t *HTTPController) TestSessionner(w http.ResponseWriter, r *http.Request) {
+
+	res, err := t.embed.TestSessionner(r)
 	if t.HandleError(err, w, r) {
 		return
 	}

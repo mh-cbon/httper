@@ -123,6 +123,27 @@ func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
 	return ret, retErr
 }
 
+// TestSessionner reads json, outputs json.
+// the json input must provide a key/value for each params.
+func (t *JSONController) TestSessionner(r *http.Request) (io.Reader, error) {
+
+	ret := new(bytes.Buffer)
+	var retErr error
+
+	input := struct {
+		s httper.Sessionner
+	}{}
+	decErr := json.NewDecoder(r.Body).Decode(&input)
+	if decErr != nil {
+		return nil, decErr
+	}
+
+	t.embed.TestSessionner(input.s)
+
+	return ret, retErr
+
+}
+
 // TestRPCer reads json, outputs json.
 // the json input must provide a key/value for each params.
 func (t *JSONController) TestRPCer(r *http.Request) (io.Reader, error) {

@@ -85,6 +85,10 @@ func (t *Controller) TestVars1(w http.ResponseWriter, r *http.Request) {
 func (t *Controller) TestCookier(c httper.Cookier) {
 }
 
+// TestSessionner ...
+func (t *Controller) TestSessionner(s httper.Sessionner) {
+}
+
 // TestRPCer ...
 func (t *Controller) TestRPCer(id int) bool {
 	return false
