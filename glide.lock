@@ -1,10 +1,18 @@
-hash: 3e5397d3dd77f6b7ff8fda00a124e225d1b61871d4e1cd9c1d1ead7d3ac3a657
-updated: 2017-05-02T12:25:11.659221898+02:00
+hash: 8e18eec32952b64535645683134588c940769ab0a4788a0de81a48873192ceb5
+updated: 2017-05-08T16:19:43.729693794+02:00
 imports:
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+- name: github.com/gorilla/securecookie
+  version: e59506cc896acb7f7bf732d4fdf5e25f7ccd8983
+- name: github.com/gorilla/sessions
+  version: ca9ada44574153444b00d3fd9c8559e4cc95f896
 - name: github.com/mh-cbon/astutil
-  version: 72ff557cae06ccb51d72df63307ddf86b2a5074e
+  version: 2416ab483d7a6b40e36d524522e6150bfb80d67d
 - name: golang.org/x/tools
-  version: 2382e3994d48b1d22acc2c86bcad0a2aff028e32
+  version: 9862c35773a14ca029b7da49c410111ba13830a0
   subpackages:
   - go/ast/astutil
   - go/buildutil

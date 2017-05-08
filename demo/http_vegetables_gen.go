@@ -5,10 +5,11 @@ package main
 // do not edit
 
 import (
-	httper "github.com/mh-cbon/httper/lib"
 	"io"
 	"net/http"
 	"strconv"
+
+	httper "github.com/mh-cbon/httper/lib"
 )
 
 var xxStrconvAtoi = strconv.Atoi
@@ -17,16 +18,19 @@ var xxHTTPOk = http.StatusOK
 
 // HTTPController is an httper of *JSONController.
 type HTTPController struct {
-	embed   *JSONController
-	cookier httper.CookieProvider
-	dataer  httper.Dataer
+	embed     *JSONController
+	cookier   httper.CookieProvider
+	dataer    httper.DataerProvider
+	sessioner httper.SessionProvider
 }
 
 // NewHTTPController constructs an httper of *JSONController
 func NewHTTPController(embed *JSONController) *HTTPController {
 	ret := &HTTPController{
-		embed:   embed,
-		cookier: &httper.CookieHelperProvider{},
+		embed:     embed,
+		cookier:   &httper.CookieHelperProvider{},
+		dataer:    &httper.GorillaHTTPDataProvider{},
+		sessioner: &httper.GorillaSessionProvider{},
 	}
 	return ret
 }
@@ -49,7 +53,7 @@ func (t *HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error
 // GetByID invoke *JSONController.GetByID using the request body as a json payload.
 func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 	var urlID int
-	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
+	tempurlID, err := strconv.Atoi(t.dataer.Make(w, r).Get("url", "id"))
 	if t.HandleError(err, w, r) {
 		return
 	}
@@ -67,7 +71,7 @@ func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 // UpdateByID invoke *JSONController.UpdateByID using the request body as a json payload.
 func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 	var urlID int
-	tempurlID, err := strconv.Atoi(t.dataer.Get("url", "id"))
+	tempurlID, err := strconv.Atoi(t.dataer.Make(w, r).Get("url", "id"))
 	if t.HandleError(err, w, r) {
 		return
 	}
@@ -86,7 +90,7 @@ func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 // DeleteByID invoke *JSONController.DeleteByID using the request body as a json payload.
 func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	var REQid int
-	tempREQid, err := strconv.Atoi(t.dataer.Get("req", "id"))
+	tempREQid, err := strconv.Atoi(t.dataer.Make(w, r).Get("req", "id"))
 	if t.HandleError(err, w, r) {
 		return
 	}

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/mh-cbon/astutil"
+	httper "github.com/mh-cbon/httper/lib"
 )
 
 var name = "httper"
@@ -25,11 +26,13 @@ func main() {
 	var ver bool
 	var v bool
 	var outPkg string
+	var mode string
 	flag.BoolVar(&help, "help", false, "Show help.")
 	flag.BoolVar(&h, "h", false, "Show help.")
 	flag.BoolVar(&ver, "version", false, "Show version.")
 	flag.BoolVar(&v, "v", false, "Show version.")
 	flag.StringVar(&outPkg, "p", os.Getenv("GOPACKAGE"), "Package name of the new code.")
+	flag.StringVar(&mode, "mode", "std", "Generation mode.")
 
 	flag.Parse()
 
@@ -38,6 +41,10 @@ func main() {
 		return
 	}
 	if help || h {
+		showHelp()
+		return
+	}
+	if mode != stdMode && mode != gorillaMode {
 		showHelp()
 		return
 	}
@@ -96,7 +103,7 @@ var xxHTTPOk = http.StatusOK
 			panic("wrong name " + todo)
 		}
 
-		res := processType(y[1], y[0], foundMethods)
+		res := processType(mode, y[1], y[0], foundMethods)
 		io.Copy(dest, &res)
 	}
 }
@@ -110,14 +117,15 @@ func showHelp() {
 	fmt.Println()
 	fmt.Println("Usage")
 	fmt.Println()
-	fmt.Printf("	%v [-p name] [out] [...types]\n\n", name)
+	fmt.Printf("	%v [-p name] [-mode name] [out] [...types]\n\n", name)
 	fmt.Printf("	out:   Output destination of the results, use '-' for stdout.\n")
 	fmt.Printf("	types: A list of types such as src:dst.\n")
 	fmt.Printf("	-p:    The name of the package output.\n")
+	fmt.Printf("	-mode: The mode of generation to apply: std|gorilla (defaults to std).\n")
 	fmt.Println()
 }
 
-func processType(destName, srcName string, foundMethods map[string][]*ast.FuncDecl) bytes.Buffer {
+func processType(mode, destName, srcName string, foundMethods map[string][]*ast.FuncDecl) bytes.Buffer {
 
 	var b bytes.Buffer
 	dest := &b
@@ -128,7 +136,8 @@ func processType(destName, srcName string, foundMethods map[string][]*ast.FuncDe
 type %v struct{
 	embed %v
 	cookier httper.CookieProvider
-	dataer httper.Dataer
+	dataer httper.DataerProvider
+	sessioner httper.SessionProvider
 }
 		`, destName, srcName, destName, srcName)
 
@@ -137,17 +146,25 @@ type %v struct{
 	hasHandleError := methodsContains(srcConcrete, "HandleError", foundMethods)
 	hasHandleSuccess := methodsContains(srcConcrete, "HandleSuccess", foundMethods)
 
+	// defiens the data provider factory
+	factory := fmt.Sprintf("%T", getDataProviderFactory(mode))
+	factory = astutil.GetUnpointedType(factory)
+	sessionFactory := fmt.Sprintf("%T", getSessionProviderFactory(mode))
+	sessionFactory = astutil.GetUnpointedType(sessionFactory)
+
 	// Make the constructor
 	fmt.Fprintf(dest, `// New%v constructs an httper of %v
 func New%v(embed %v) *%v {
 	ret := &%v{
 		embed: embed,
 		cookier: &httper.CookieHelperProvider{},
+		dataer: &%v{},
+		sessioner: &%v{},
 	}
   return ret
 }
 `,
-		destName, srcName, destName, srcName, destName, destName)
+		destName, srcName, destName, srcName, destName, destName, factory, sessionFactory)
 
 	// Add an error handler method
 	if hasHandleError {
@@ -222,17 +239,17 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 			paramType := strings.TrimSpace(lParamTypes[i])
 
 			if p == reqBodyVarName {
-				methodInvokation += fmt.Sprintf("reqBody :=	r.Body\n")
+				methodInvokation += fmt.Sprintf("%v :=	r.Body\n", reqBodyVarName)
 
-			} else if isConvetionnedParam(p) {
+			} else if isConvetionnedParam(mode, p) {
 
-				prefix := getParamConvention(p)
+				prefix := getParamConvention(mode, p)
 				name := strings.ToLower(p[len(prefix):])
 
 				methodInvokation += fmt.Sprintf("var %v %v\n", p, paramType)
 
 				//handle prefixed data
-				expr := fmt.Sprintf("t.dataer.Get(%q, %q)", prefix, name)
+				expr := fmt.Sprintf("t.dataer.Make(w,r).Get(%q, %q)", prefix, name)
 				methodInvokation += convertedStr(p, expr, paramType)
 
 			} else {
@@ -243,6 +260,8 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 				}
 				if paramType == "httper.Cookier" {
 					methodInvokation += fmt.Sprintf("%v = t.cookier.Make(w, r)\n", p)
+				} else if paramType == "httper.Sessionner" {
+					methodInvokation += fmt.Sprintf("%v = t.sessioner.Make(w, r)\n", p)
 				}
 			}
 		}
@@ -266,44 +285,68 @@ func (t %v) %v(w http.ResponseWriter, r *http.Request) {
 	return b
 }
 
+var gorillaMode = "gorilla"
+var stdMode = "std"
 var reqBodyVarName = "reqBody"
 
-var prefixes = []string{"url", "get", "req", "post", "cookie", "route"}
-
-func isConvetionnedParam(varName string) bool {
+func isConvetionnedParam(mode, varName string) bool {
 	if varName == reqBodyVarName {
 		return true
 	}
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(varName, strings.ToLower(prefix)) {
-			f := string(varName[len(prefix):][0])
-			return f == strings.ToUpper(f)
-		} else if strings.HasPrefix(varName, strings.ToUpper(prefix)) {
-			f := string(varName[len(prefix):][0])
-			return f == strings.ToLower(f)
-		}
-	}
-	return false
+	return getVarPrefix(mode, varName) != ""
 }
 
-func getParamConvention(varName string) string {
+func getParamConvention(mode, varName string) string {
 	if varName == reqBodyVarName {
 		return reqBodyVarName
 	}
-	for _, prefix := range prefixes {
+	return getVarPrefix(mode, varName)
+}
+
+func getSessionProviderFactory(mode string) httper.SessionProvider {
+	var factory httper.SessionProvider
+	if mode == stdMode {
+		factory = &httper.VoidSessionProvider{}
+	} else if mode == gorillaMode {
+		factory = &httper.GorillaSessionProvider{}
+	}
+	return factory
+}
+
+func getDataProviderFactory(mode string) httper.DataerProvider {
+	var factory httper.DataerProvider
+	if mode == stdMode {
+		factory = &httper.StdHTTPDataProvider{}
+	} else if mode == gorillaMode {
+		factory = &httper.GorillaHTTPDataProvider{}
+	}
+	return factory
+}
+
+func getDataProvider(mode string) *httper.DataProviderFacade {
+	return getDataProviderFactory(mode).MakeEmpty().(*httper.DataProviderFacade)
+}
+
+func getVarPrefix(mode, varName string) string {
+	ret := ""
+	provider := getDataProvider(mode)
+	for _, p := range provider.Providers {
+		prefix := p.GetName()
 		if strings.HasPrefix(varName, strings.ToLower(prefix)) {
 			f := string(varName[len(prefix):][0])
 			if f == strings.ToUpper(f) {
-				return prefix
+				ret = prefix
+				break
 			}
 		} else if strings.HasPrefix(varName, strings.ToUpper(prefix)) {
 			f := string(varName[len(prefix):][0])
 			if f == strings.ToLower(f) {
-				return prefix
+				ret = prefix
+				break
 			}
 		}
 	}
-	return ""
+	return ret
 }
 
 func methodsContains(typeName, search string, methods map[string][]*ast.FuncDecl) bool {
