@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/tools/go/loader"
+
 	"github.com/mh-cbon/astutil"
 	httper "github.com/mh-cbon/httper/lib"
 )
@@ -60,9 +62,10 @@ func main() {
 	o := args[0]
 	restargs := args[1:]
 
-	prog := astutil.GetProgram(pkgToLoad).Package(pkgToLoad)
+	prog := astutil.GetProgram(pkgToLoad)
+	pkg := prog.Package(pkgToLoad)
 
-	foundMethods := astutil.FindMethods(prog)
+	foundMethods := astutil.FindMethods(pkg)
 
 	if o != "-" {
 		f, err := os.Create(o)
@@ -97,15 +100,23 @@ var xxIoCopy = io.Copy
 var xxHTTPOk = http.StatusOK
 `)
 
-	for _, todo := range restargs {
+	todos := checkArgs(restargs)
+	for _, todo := range todos {
+		res := processType(mode, todo[1], todo[0], prog, pkg, foundMethods)
+		io.Copy(dest, &res)
+	}
+}
+
+func checkArgs(args []string) [][]string {
+	ret := [][]string{}
+	for _, todo := range args {
 		y := strings.Split(todo, ":")
 		if len(y) != 2 {
 			panic("wrong name " + todo)
 		}
-
-		res := processType(mode, y[1], y[0], foundMethods)
-		io.Copy(dest, &res)
+		ret = append(ret, y)
 	}
+	return ret
 }
 
 func showVer() {
@@ -125,24 +136,31 @@ func showHelp() {
 	fmt.Println()
 }
 
-func processType(mode, destName, srcName string, foundMethods map[string][]*ast.FuncDecl) bytes.Buffer {
+func processType(mode, destName, srcName string, prog *loader.Program, pkg *loader.PackageInfo, foundMethods map[string][]*ast.FuncDecl) bytes.Buffer {
 
 	var b bytes.Buffer
 	dest := &b
 
+	srcConcrete := astutil.GetUnpointedType(srcName)
+	// the json input must provide a key/value for each params.
+	structType := astutil.FindStruct(pkg, srcConcrete)
+	structComment := astutil.GetComment(prog, structType.Pos())
+	// todo: might do better to send only annotations or do other improvemenets.
+	structComment = makeCommentLines(structComment)
+
 	// Declare the new type
 	fmt.Fprintf(dest, `
 // %v is an httper of %v.
+%v
 type %v struct{
 	embed %v
 	cookier httper.CookieProvider
 	dataer httper.DataerProvider
 	sessioner httper.SessionProvider
 }
-		`, destName, srcName, destName, srcName)
+		`, destName, srcName, structComment, destName, srcName)
 
 	dstStar := astutil.GetPointedType(destName)
-	srcConcrete := astutil.GetUnpointedType(srcName)
 	hasHandleError := methodsContains(srcConcrete, "HandleError", foundMethods)
 	hasHandleSuccess := methodsContains(srcConcrete, "HandleSuccess", foundMethods)
 
@@ -163,8 +181,7 @@ func New%v(embed %v) *%v {
 	}
   return ret
 }
-`,
-		destName, srcName, destName, srcName, destName, destName, factory, sessionFactory)
+`, destName, srcName, destName, srcName, destName, destName, factory, sessionFactory)
 
 	// Add an error handler method
 	if hasHandleError {
@@ -175,8 +192,7 @@ func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 	}
 		return t.embed.HandleError(err, w, r)
 }
-`,
-			dstStar)
+`, dstStar)
 
 	} else {
 		fmt.Fprintf(dest, `// HandleError returns http 500 and prints the error.
@@ -188,8 +204,7 @@ func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 	io.WriteString(w, err.Error())
 	return true
 }
-`,
-			dstStar)
+`, dstStar)
 	}
 
 	// Add a success handler method
@@ -198,8 +213,7 @@ func (t %v) HandleError(err error, w http.ResponseWriter, r *http.Request)bool{
 func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 	return t.embed.HandleSuccess(w, r)
 }
-`,
-			dstStar)
+`, dstStar)
 
 	} else {
 		fmt.Fprintf(dest, `// HandleSuccess prints http 200 and prints r.
@@ -208,8 +222,7 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 	_, err := io.Copy(w, r)
 	return err
 }
-`,
-			dstStar)
+`, dstStar)
 	}
 	fmt.Fprintln(dest)
 
@@ -229,6 +242,9 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 		if methodName == "HandleSuccess" {
 			continue
 		}
+
+		comment := astutil.GetComment(prog, m.Pos())
+		comment = makeCommentLines(comment)
 
 		methodInvokation := ""
 
@@ -275,15 +291,28 @@ func (t %v) HandleSuccess(w http.ResponseWriter, r io.Reader) error {
 `, methodName, paramNames, handleErr("err"))
 
 		fmt.Fprintf(dest, `// %v invoke %v.%v using the request body as a json payload.
+			%v
 func (t %v) %v(w http.ResponseWriter, r *http.Request) {
   %v
   %v
-}`,
-			methodName, srcName, methodName, dstStar, methodName, methodInvokation, body)
+}`, methodName, srcName, methodName, comment, dstStar, methodName, methodInvokation, body)
 		fmt.Fprintln(dest)
 	}
 
 	return b
+}
+
+func makeCommentLines(s string) string {
+	s = strings.TrimSpace(s)
+	comment := ""
+	for _, k := range strings.Split(s, "\n") {
+		comment += "// " + k + "\n"
+	}
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		comment = "//"
+	}
+	return comment
 }
 
 var gorillaMode = "gorilla"

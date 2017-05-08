@@ -180,6 +180,8 @@ var xxIoCopy = io.Copy
 var xxHTTPOk = http.StatusOK
 
 // HTTPController is an httper of *JSONController.
+// JSONController is jsoner of *Controller.
+// Controller of some resources.
 type HTTPController struct {
 	embed     *JSONController
 	cookier   httper.CookieProvider
@@ -214,6 +216,9 @@ func (t *HTTPController) HandleSuccess(w http.ResponseWriter, r io.Reader) error
 }
 
 // GetByID invoke *JSONController.GetByID using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.GetByID.
+// Other parameters are passed straight
+// GetByID ...
 func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 	var urlID int
 	tempurlID, err := strconv.Atoi(t.dataer.Make(w, r).Get("url", "id"))
@@ -232,6 +237,9 @@ func (t *HTTPController) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateByID invoke *JSONController.UpdateByID using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.UpdateByID.
+// Other parameters are passed straight
+// UpdateByID ...
 func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 	var urlID int
 	tempurlID, err := strconv.Atoi(t.dataer.Make(w, r).Get("url", "id"))
@@ -251,6 +259,9 @@ func (t *HTTPController) UpdateByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteByID invoke *JSONController.DeleteByID using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.DeleteByID.
+// Other parameters are passed straight
+// DeleteByID ...
 func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
 	var REQid int
 	tempREQid, err := strconv.Atoi(t.dataer.Make(w, r).Get("req", "id"))
@@ -269,6 +280,9 @@ func (t *HTTPController) DeleteByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // TestVars1 invoke *JSONController.TestVars1 using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.TestVars1.
+// Other parameters are passed straight
+// TestVars1 ...
 func (t *HTTPController) TestVars1(w http.ResponseWriter, r *http.Request) {
 
 	res, err := t.embed.TestVars1(w, r)
@@ -281,6 +295,9 @@ func (t *HTTPController) TestVars1(w http.ResponseWriter, r *http.Request) {
 }
 
 // TestCookier invoke *JSONController.TestCookier using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.TestCookier.
+// Other parameters are passed straight
+// TestCookier ...
 func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
 	var c httper.Cookier
 	c = t.cookier.Make(w, r)
@@ -295,6 +312,9 @@ func (t *HTTPController) TestCookier(w http.ResponseWriter, r *http.Request) {
 }
 
 // TestSessionner invoke *JSONController.TestSessionner using the request body as a json payload.
+// Decodes reqBody as json to invoke *Controller.TestSessionner.
+// Other parameters are passed straight
+// TestSessionner ...
 func (t *HTTPController) TestSessionner(w http.ResponseWriter, r *http.Request) {
 	var s httper.Sessionner
 	s = t.sessioner.Make(w, r)
@@ -309,6 +329,8 @@ func (t *HTTPController) TestSessionner(w http.ResponseWriter, r *http.Request) 
 }
 
 // TestRPCer invoke *JSONController.TestRPCer using the request body as a json payload.
+// Decodes r as json to invoke *Controller.TestRPCer.
+// TestRPCer ...
 func (t *HTTPController) TestRPCer(w http.ResponseWriter, r *http.Request) {
 
 	res, err := t.embed.TestRPCer(r)

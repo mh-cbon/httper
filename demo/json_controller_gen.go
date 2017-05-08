@@ -13,6 +13,7 @@ import (
 )
 
 // JSONController is jsoner of *Controller.
+// Controller of some resources.
 type JSONController struct {
 	embed *Controller
 }
@@ -35,8 +36,9 @@ func (t *JSONController) HandleSuccess(w io.Writer, r io.Reader) error {
 	return err
 }
 
-// GetByID reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.GetByID.
+// Other parameters are passed straight
+// GetByID ...
 func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -55,8 +57,9 @@ func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
 	return ret, retErr
 }
 
-// UpdateByID reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.UpdateByID.
+// Other parameters are passed straight
+// UpdateByID ...
 func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -81,8 +84,9 @@ func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, er
 	return ret, retErr
 }
 
-// DeleteByID reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.DeleteByID.
+// Other parameters are passed straight
+// DeleteByID ...
 func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -101,8 +105,9 @@ func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
 	return ret, retErr
 }
 
-// TestVars1 reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.TestVars1.
+// Other parameters are passed straight
+// TestVars1 ...
 func (t *JSONController) TestVars1(w http.ResponseWriter, r *http.Request) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -112,8 +117,9 @@ func (t *JSONController) TestVars1(w http.ResponseWriter, r *http.Request) (io.R
 	return ret, retErr
 }
 
-// TestCookier reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.TestCookier.
+// Other parameters are passed straight
+// TestCookier ...
 func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -123,8 +129,9 @@ func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
 	return ret, retErr
 }
 
-// TestSessionner reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes reqBody as json to invoke *Controller.TestSessionner.
+// Other parameters are passed straight
+// TestSessionner ...
 func (t *JSONController) TestSessionner(s httper.Sessionner) (io.Reader, error) {
 	ret := new(bytes.Buffer)
 	var retErr error
@@ -134,8 +141,8 @@ func (t *JSONController) TestSessionner(s httper.Sessionner) (io.Reader, error) 
 	return ret, retErr
 }
 
-// TestRPCer reads json, outputs json.
-// the json input must provide a key/value for each params.
+// Decodes r as json to invoke *Controller.TestRPCer.
+// TestRPCer ...
 func (t *JSONController) TestRPCer(r *http.Request) (io.Reader, error) {
 
 	ret := new(bytes.Buffer)
