@@ -36,7 +36,7 @@ func (t *JSONController) HandleSuccess(w io.Writer, r io.Reader) error {
 	return err
 }
 
-// Decodes reqBody as json to invoke *Controller.GetByID.
+// GetByID Decodes reqBody as json to invoke *Controller.GetByID.
 // Other parameters are passed straight
 // GetByID ...
 func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
@@ -57,7 +57,7 @@ func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
 	return ret, retErr
 }
 
-// Decodes reqBody as json to invoke *Controller.UpdateByID.
+// UpdateByID Decodes reqBody as json to invoke *Controller.UpdateByID.
 // Other parameters are passed straight
 // UpdateByID ...
 func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, error) {
@@ -84,7 +84,7 @@ func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, er
 	return ret, retErr
 }
 
-// Decodes reqBody as json to invoke *Controller.DeleteByID.
+// DeleteByID Decodes reqBody as json to invoke *Controller.DeleteByID.
 // Other parameters are passed straight
 // DeleteByID ...
 func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
@@ -105,7 +105,7 @@ func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
 	return ret, retErr
 }
 
-// Decodes reqBody as json to invoke *Controller.TestVars1.
+// TestVars1 Decodes reqBody as json to invoke *Controller.TestVars1.
 // Other parameters are passed straight
 // TestVars1 ...
 func (t *JSONController) TestVars1(w http.ResponseWriter, r *http.Request) (io.Reader, error) {
@@ -117,7 +117,7 @@ func (t *JSONController) TestVars1(w http.ResponseWriter, r *http.Request) (io.R
 	return ret, retErr
 }
 
-// Decodes reqBody as json to invoke *Controller.TestCookier.
+// TestCookier Decodes reqBody as json to invoke *Controller.TestCookier.
 // Other parameters are passed straight
 // TestCookier ...
 func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
@@ -129,7 +129,7 @@ func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
 	return ret, retErr
 }
 
-// Decodes reqBody as json to invoke *Controller.TestSessionner.
+// TestSessionner Decodes reqBody as json to invoke *Controller.TestSessionner.
 // Other parameters are passed straight
 // TestSessionner ...
 func (t *JSONController) TestSessionner(s httper.Sessionner) (io.Reader, error) {
@@ -141,7 +141,7 @@ func (t *JSONController) TestSessionner(s httper.Sessionner) (io.Reader, error) 
 	return ret, retErr
 }
 
-// Decodes r as json to invoke *Controller.TestRPCer.
+// TestRPCer Decodes r as json to invoke *Controller.TestRPCer.
 // TestRPCer ...
 func (t *JSONController) TestRPCer(r *http.Request) (io.Reader, error) {
 

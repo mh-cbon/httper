@@ -9,12 +9,14 @@ type ChanTomates struct {
 	embed *Tomates
 	ops   chan func()
 	stop  chan bool
+	tick  chan bool
 }
 
 // NewChanTomates constructs a chenneled version of *Tomates
 func NewChanTomates() *ChanTomates {
 	ret := &ChanTomates{
 		ops:  make(chan func()),
+		tick: make(chan bool),
 		stop: make(chan bool),
 	}
 	ret.embed = NewTomates()
@@ -28,6 +30,7 @@ func (t *ChanTomates) Start() {
 		select {
 		case op := <-t.ops:
 			op()
+			t.tick <- true
 		case <-t.stop:
 			return
 		}
@@ -45,6 +48,7 @@ func (t *ChanTomates) Push(x ...*Tomate) *Tomates {
 	t.ops <- func() {
 		retVar0 = t.embed.Push(x...)
 	}
+	<-t.tick
 	return retVar0
 }
 
@@ -54,6 +58,7 @@ func (t *ChanTomates) Unshift(x ...*Tomate) *Tomates {
 	t.ops <- func() {
 		retVar1 = t.embed.Unshift(x...)
 	}
+	<-t.tick
 	return retVar1
 }
 
@@ -63,6 +68,7 @@ func (t *ChanTomates) Pop() *Tomate {
 	t.ops <- func() {
 		retVar2 = t.embed.Pop()
 	}
+	<-t.tick
 	return retVar2
 }
 
@@ -72,6 +78,7 @@ func (t *ChanTomates) Shift() *Tomate {
 	t.ops <- func() {
 		retVar3 = t.embed.Shift()
 	}
+	<-t.tick
 	return retVar3
 }
 
@@ -81,6 +88,7 @@ func (t *ChanTomates) Index(s *Tomate) int {
 	t.ops <- func() {
 		retVar4 = t.embed.Index(s)
 	}
+	<-t.tick
 	return retVar4
 }
 
@@ -90,6 +98,7 @@ func (t *ChanTomates) Contains(s *Tomate) bool {
 	t.ops <- func() {
 		retVar5 = t.embed.Contains(s)
 	}
+	<-t.tick
 	return retVar5
 }
 
@@ -99,6 +108,7 @@ func (t *ChanTomates) RemoveAt(i int) bool {
 	t.ops <- func() {
 		retVar6 = t.embed.RemoveAt(i)
 	}
+	<-t.tick
 	return retVar6
 }
 
@@ -108,6 +118,7 @@ func (t *ChanTomates) Remove(s *Tomate) bool {
 	t.ops <- func() {
 		retVar7 = t.embed.Remove(s)
 	}
+	<-t.tick
 	return retVar7
 }
 
@@ -117,6 +128,7 @@ func (t *ChanTomates) InsertAt(i int, s *Tomate) *Tomates {
 	t.ops <- func() {
 		retVar8 = t.embed.InsertAt(i, s)
 	}
+	<-t.tick
 	return retVar8
 }
 
@@ -126,6 +138,7 @@ func (t *ChanTomates) Splice(start int, length int, s ...*Tomate) []*Tomate {
 	t.ops <- func() {
 		retVar9 = t.embed.Splice(start, length, s...)
 	}
+	<-t.tick
 	return retVar9
 }
 
@@ -135,6 +148,7 @@ func (t *ChanTomates) Slice(start int, length int) []*Tomate {
 	t.ops <- func() {
 		retVar10 = t.embed.Slice(start, length)
 	}
+	<-t.tick
 	return retVar10
 }
 
@@ -144,6 +158,7 @@ func (t *ChanTomates) Reverse() *Tomates {
 	t.ops <- func() {
 		retVar11 = t.embed.Reverse()
 	}
+	<-t.tick
 	return retVar11
 }
 
@@ -153,6 +168,7 @@ func (t *ChanTomates) Len() int {
 	t.ops <- func() {
 		retVar12 = t.embed.Len()
 	}
+	<-t.tick
 	return retVar12
 }
 
@@ -162,6 +178,7 @@ func (t *ChanTomates) Set(x []*Tomate) *Tomates {
 	t.ops <- func() {
 		retVar13 = t.embed.Set(x)
 	}
+	<-t.tick
 	return retVar13
 }
 
@@ -171,6 +188,7 @@ func (t *ChanTomates) Get() []*Tomate {
 	t.ops <- func() {
 		retVar14 = t.embed.Get()
 	}
+	<-t.tick
 	return retVar14
 }
 
@@ -180,6 +198,7 @@ func (t *ChanTomates) At(i int) *Tomate {
 	t.ops <- func() {
 		retVar15 = t.embed.At(i)
 	}
+	<-t.tick
 	return retVar15
 }
 
@@ -189,6 +208,7 @@ func (t *ChanTomates) Filter(filters ...func(*Tomate) bool) *Tomates {
 	t.ops <- func() {
 		retVar16 = t.embed.Filter(filters...)
 	}
+	<-t.tick
 	return retVar16
 }
 
@@ -198,6 +218,7 @@ func (t *ChanTomates) Map(mappers ...func(*Tomate) *Tomate) *Tomates {
 	t.ops <- func() {
 		retVar17 = t.embed.Map(mappers...)
 	}
+	<-t.tick
 	return retVar17
 }
 
@@ -207,6 +228,7 @@ func (t *ChanTomates) First() *Tomate {
 	t.ops <- func() {
 		retVar18 = t.embed.First()
 	}
+	<-t.tick
 	return retVar18
 }
 
@@ -216,6 +238,7 @@ func (t *ChanTomates) Last() *Tomate {
 	t.ops <- func() {
 		retVar19 = t.embed.Last()
 	}
+	<-t.tick
 	return retVar19
 }
 
@@ -225,5 +248,6 @@ func (t *ChanTomates) Empty() bool {
 	t.ops <- func() {
 		retVar20 = t.embed.Empty()
 	}
+	<-t.tick
 	return retVar20
 }
