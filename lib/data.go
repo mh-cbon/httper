@@ -92,17 +92,24 @@ type GorillaHTTPDataProvider struct {
 // Make returns a DataHelper
 func (c GorillaHTTPDataProvider) Make(w http.ResponseWriter, r *http.Request) Dataer {
 	ret := c.StdHTTPDataProvider.Make(w, r).(*DataProviderFacade)
+
 	query := r.URL.Query()
 	vars := mux.Vars(r)
-	// from the doc:
-	// Get a session. We're ignoring the error resulted from decoding an
-	// existing session: Get() always returns a session, even if empty.
-	s, _ := c.store.Get(r, c.Name)
 	ret.Providers = append(ret.Providers,
 		&URLHTTPDataProvider{w, r, query, vars},
 		&RouteHTTPDataProvider{w, r, vars},
-		&GorillaSessionHTTPDataProvider{w, r, s},
 	)
+
+	if c.store != nil {
+		// from the doc:
+		// Get a session. We're ignoring the error resulted from decoding an
+		// existing session: Get() always returns a session, even if empty.
+		s, _ := c.store.Get(r, c.Name)
+		ret.Providers = append(
+			ret.Providers,
+			&GorillaSessionHTTPDataProvider{w, r, s},
+		)
+	}
 	return ret
 }
 
