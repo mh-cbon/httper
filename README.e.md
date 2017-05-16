@@ -9,7 +9,7 @@ LicenseColor: yellow
 
 {{pkgdoc}}
 
-Choose your gun! | [Aux armes!](https://www.youtube.com/watch?v=hD-wD_AMRYc&t=7)
+s/Choose your gun!/[Aux armes!](https://www.youtube.com/watch?v=hD-wD_AMRYc&t=7)/
 
 # {{toc 5}}
 
@@ -26,8 +26,10 @@ Choose your gun! | [Aux armes!](https://www.youtube.com/watch?v=hD-wD_AMRYc&t=7)
 ## Cli examples
 
 ```sh
-# Create a httped version of Tomate to MyTomate
-httper http_vegetables_gen.go *JSONTomates:HTTPTomates
+# Create a httped version of JSONTomates to HTTPTomates
+httper *JSONTomates:HTTPTomates
+# Create a jsoned version of JSONTomates to HTTPTomates to stdout
+httper -p main - JSONTomates:HTTPTomates
 ```
 
 # API example
@@ -38,7 +40,7 @@ Following example demonstates a program using it to generate an `httped` version
 
 Following code is the generated implementation of an `httped` typed slice of `Tomate`.
 
-#### > {{cat "demo/http_vegetables_gen.go" | color "go"}}
+#### > {{cat "demo/controllerhttpgen.go" | color "go"}}
 
 # Recipes
 

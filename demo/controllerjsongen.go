@@ -7,39 +7,51 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	httper "github.com/mh-cbon/httper/lib"
+	"github.com/mh-cbon/httper/lib"
+	jsoner "github.com/mh-cbon/jsoner/lib"
 	"io"
 	"net/http"
 )
 
-// JSONController is jsoner of *Controller.
+// ControllerJSONGen is jsoner of *Controller.
 // Controller of some resources.
-type JSONController struct {
-	embed *Controller
+type ControllerJSONGen struct {
+	embed     *Controller
+	finalizer jsoner.Finalizer
 }
 
-// NewJSONController constructs a jsoner of *Controller
-func NewJSONController(embed *Controller) *JSONController {
-	ret := &JSONController{
-		embed: embed,
+// NewControllerJSONGen constructs a jsoner of *Controller
+func NewControllerJSONGen(embed *Controller, finalizer jsoner.Finalizer) *ControllerJSONGen {
+	if finalizer == nil {
+		finalizer = &jsoner.JSONFinalizer{}
+	}
+	ret := &ControllerJSONGen{
+		embed:     embed,
+		finalizer: finalizer,
 	}
 	return ret
 }
 
-// HandleSuccess prints http 200 and prints r.
-func (t *JSONController) HandleSuccess(w io.Writer, r io.Reader) error {
-	if x, ok := w.(http.ResponseWriter); ok {
-		x.WriteHeader(http.StatusOK)
-		x.Header().Set("Content-Type", "application/json")
+//UnmarshalJSON JSON unserializes ControllerJSONGen
+func (t *ControllerJSONGen) UnmarshalJSON(b []byte) error {
+	var embed *Controller
+	if err := json.Unmarshal(b, &embed); err != nil {
+		return err
 	}
-	_, err := io.Copy(w, r)
-	return err
+	t.embed = embed
+	return nil
+}
+
+//MarshalJSON JSON serializes ControllerJSONGen
+func (t *ControllerJSONGen) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.embed)
 }
 
 // GetByID Decodes reqBody as json to invoke *Controller.GetByID.
 // Other parameters are passed straight
 // GetByID ...
-func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
+func (t *ControllerJSONGen) GetByID(urlID int) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
@@ -55,12 +67,14 @@ func (t *JSONController) GetByID(urlID int) (io.Reader, error) {
 	}
 
 	return ret, retErr
+
 }
 
 // UpdateByID Decodes reqBody as json to invoke *Controller.UpdateByID.
 // Other parameters are passed straight
 // UpdateByID ...
-func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, error) {
+func (t *ControllerJSONGen) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
@@ -69,7 +83,6 @@ func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, er
 	if decErr != nil {
 		return nil, decErr
 	}
-
 	retVar1 := t.embed.UpdateByID(urlID, decBody)
 
 	out, encErr := json.Marshal([]interface{}{retVar1})
@@ -82,12 +95,14 @@ func (t *JSONController) UpdateByID(urlID int, reqBody io.Reader) (io.Reader, er
 	}
 
 	return ret, retErr
+
 }
 
 // DeleteByID Decodes reqBody as json to invoke *Controller.DeleteByID.
 // Other parameters are passed straight
 // DeleteByID ...
-func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
+func (t *ControllerJSONGen) DeleteByID(REQid int) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
@@ -103,67 +118,79 @@ func (t *JSONController) DeleteByID(REQid int) (io.Reader, error) {
 	}
 
 	return ret, retErr
+
 }
 
 // TestVars1 Decodes reqBody as json to invoke *Controller.TestVars1.
 // Other parameters are passed straight
 // TestVars1 ...
-func (t *JSONController) TestVars1(w http.ResponseWriter, r *http.Request) (io.Reader, error) {
+func (t *ControllerJSONGen) TestVars1(w http.ResponseWriter, r *http.Request) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
 	t.embed.TestVars1(w, r)
 
 	return ret, retErr
+
 }
 
 // TestCookier Decodes reqBody as json to invoke *Controller.TestCookier.
 // Other parameters are passed straight
 // TestCookier ...
-func (t *JSONController) TestCookier(c httper.Cookier) (io.Reader, error) {
+func (t *ControllerJSONGen) TestCookier(c httper.Cookier) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
 	t.embed.TestCookier(c)
 
 	return ret, retErr
+
 }
 
 // TestSessionner Decodes reqBody as json to invoke *Controller.TestSessionner.
 // Other parameters are passed straight
 // TestSessionner ...
-func (t *JSONController) TestSessionner(s httper.Sessionner) (io.Reader, error) {
+func (t *ControllerJSONGen) TestSessionner(s httper.Sessionner) (io.Reader, error) {
+
 	ret := new(bytes.Buffer)
 	var retErr error
 
 	t.embed.TestSessionner(s)
 
 	return ret, retErr
+
 }
 
 // TestRPCer Decodes r as json to invoke *Controller.TestRPCer.
 // TestRPCer ...
-func (t *JSONController) TestRPCer(r *http.Request) (io.Reader, error) {
+func (t *ControllerJSONGen) TestRPCer(r *http.Request) (io.Reader, error) {
 
 	ret := new(bytes.Buffer)
 	var retErr error
-
 	input := struct {
-		id int
+		Arg0 int
 	}{}
 	decErr := json.NewDecoder(r.Body).Decode(&input)
 	if decErr != nil {
 		return nil, decErr
 	}
 
-	retVar3 := t.embed.TestRPCer(input.id)
+	retVar3 := t.embed.TestRPCer(input.Arg0)
 
-	out, encErr := json.Marshal([]interface{}{retVar3})
+	output := struct {
+		Arg0 bool
+	}{
+		Arg0: retVar3,
+	}
+
+	outBytes, encErr := json.Marshal(output)
 	if encErr != nil {
 		retErr = encErr
 	} else {
 		var b bytes.Buffer
-		b.Write(out)
+		b.Write(outBytes)
 		ret = &b
 	}
 

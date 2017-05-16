@@ -1,34 +1,44 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	httper "github.com/mh-cbon/httper/lib"
 )
 
-//go:generate lister vegetables_gen.go *Tomate:Tomates
-//go:generate channeler tomate_chan_gen.go *Tomates:ChanTomates
+//go:generate lister *Tomate:TomatesGen
+//go:generate channeler TomatesGen:TomatesSyncGen
 
-//go:generate jsoner -mode gorilla json_controller_gen.go *Controller:JSONController
-//go:generate httper -mode gorilla http_vegetables_gen.go *JSONController:HTTPController
+//go:generate jsoner -mode gorilla *Controller:ControllerJSONGen
+//go:generate httper -mode gorilla *ControllerJSONGen:ControllerHTTPGen
 
 func main() {
 
-	backend := NewChanTomates()
-	backend.Push(&Tomate{Name: "red"})
+	backend := NewTomatesSyncGen()
+	backend.Push(&Tomate{Name: "Red"})
 
-	jsoner := NewJSONController(NewController(backend))
-	httper := NewHTTPController(jsoner)
-
+	jsoner := NewControllerJSONGen(NewController(backend), nil)
+	httper := NewControllerHTTPGen(jsoner, nil)
 	// public views
 	http.HandleFunc("/", httper.GetByID)
 
-	/*
-		curl -H "Accept: application/json" -H "Content-type: application/json"  http://localhost:8080/?id=0
-	*/
+	go func() {
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	time.Sleep(1 * time.Millisecond)
+
+	req, err := http.Get("http://localhost:8080/?id=0")
+	if err != nil {
+		panic(err)
+	}
+	defer req.Body.Close()
+	io.Copy(os.Stdout, req.Body)
+
 }
 
 // Tomate is about red vegetables to make famous italian food.
@@ -44,11 +54,11 @@ func (t *Tomate) GetID() int {
 
 // Controller of some resources.
 type Controller struct {
-	backend *ChanTomates
+	backend *TomatesSyncGen
 }
 
 // NewController ...
-func NewController(backend *ChanTomates) *Controller {
+func NewController(backend *TomatesSyncGen) *Controller {
 	return &Controller{
 		backend: backend,
 	}
@@ -56,7 +66,7 @@ func NewController(backend *ChanTomates) *Controller {
 
 // GetByID ...
 func (t *Controller) GetByID(urlID int) *Tomate {
-	return t.backend.Filter(FilterTomates.ByID(urlID)).First()
+	return t.backend.Filter(FilterTomatesGen.ByID(urlID)).First()
 }
 
 // UpdateByID ...
