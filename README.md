@@ -48,7 +48,7 @@ Usage
           If the Package path is empty, it is set to the package name being generated.
           Name can be a valid type identifier such as TypeName, *TypeName, []TypeName 
   -p:     The name of the package output.
-	-mode: The mode of generation to apply: std|gorilla (defaults to std).
+  -mode:  The mode of generation to apply: std|gorilla (defaults to std).
 ```
 
 ## Cli examples

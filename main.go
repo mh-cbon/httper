@@ -104,7 +104,7 @@ func showHelp() {
 	// fmt.Printf("          the package name is set to the name of this directory.\n")
 	fmt.Printf("          Name can be a valid type identifier such as TypeName, *TypeName, []TypeName \n")
 	fmt.Printf("  -p:     The name of the package output.\n")
-	fmt.Printf("	-mode: The mode of generation to apply: std|gorilla (defaults to std).\n")
+	fmt.Printf("  -mode:  The mode of generation to apply: std|gorilla (defaults to std).\n")
 	fmt.Println()
 }
 
